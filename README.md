@@ -1,0 +1,74 @@
+# אל על חלל · EL AL SPACE (Client)
+
+צד לקוח למערכת הזמנת טיסות בין־כוכביות. React + TanStack Start + TypeScript + Tailwind v4, עברית מימין לשמאל, נגישות מלאה.
+
+## הרצה
+
+```bash
+npm install
+cp .env.example .env     # ערכו את API_PROXY_TARGET לכתובת שרת ה-C# שלכם
+npm run dev              # http://localhost:3000
+```
+
+ב-dev הדפדפן פונה אל `/api` ו-Vite מעביר את הבקשות לשרת (`API_PROXY_TARGET`), כך שאין צורך ב-CORS. ב-https מקומי עם תעודה לא מהימנה זה כבר מטופל (`secure: false`).
+
+| פקודה | מה היא עושה |
+| --- | --- |
+| `npm run dev` | שרת פיתוח |
+| `npm run build` / `npm run preview` | בנייה לפרודקשן ובדיקת הבנייה |
+| `npm run typecheck` | בדיקת טיפוסים |
+| `npm test` | בדיקות יחידה (vitest) |
+| `node scripts/mock-server.mjs` | שרת הדמיה שמחקה את ה-API (פורט 5254) |
+
+## משתני סביבה
+
+- `VITE_API_URL`: כתובת השרת בפרודקשן (למשל `https://api.example.com`). ב-dev משאירים ריק.
+- `API_PROXY_TARGET`: לאן Vite מעביר את `/api` ב-dev.
+- `VITE_DATA_MODE`: `auto` (ברירת מחדל), `live` או `demo`.
+  - `auto`: נתונים אמיתיים, ואם השרת לא זמין, לא מגיב, או שאין הרשאה לצפות בטיסות (401/403/5xx) עוברים לנתוני הדגמה, עם הודעה גלויה "נתוני הדגמה".
+  - `live`: רק השרת, שגיאות מוצגות כמו שהן.
+  - `demo`: הכול מקומי, כולל כניסה והזמנה מדומות.
+
+## שרת הדמיה
+
+`node scripts/mock-server.mjs` מחקה את נקודות הקצה של שרת ה-C# (JWT, 401/403/404/409, עימוד).
+משתמשים: `passenger@example.com` ו-`admin@example.com`, סיסמה `Passw0rd!`.
+להרצה מול הלקוח: `API_PROXY_TARGET=http://localhost:5254 npm run dev`.
+לבדיקת תחרות על המושב האחרון: `POST /__mock/take-last-seat/4` לפני התשלום, ואיפוס עם `POST /__mock/reset`.
+
+## מבנה
+
+```
+src/
+  routes/            מסכים (TanStack Router, לפי קבצים) + metadata ייחודי לכל עמוד
+  components/
+    ui/              כפתורים, שדות, דיאלוג, טאבים, הודעות, מצבי טעינה/שגיאה/ריק
+    space/           כוכבי לכת, שדה כוכבים, פתיחה קולנועית, מסלול
+    booking/         שלבי ההזמנה, מפת מושבים, כרטיס עלייה, מסך התנגשות (409)
+    home/ flights/ layout/ brand/
+  lib/
+    api/             types, client, endpoints, queries, errors, config, demo-data (הפרדה מלאה מהממשק)
+    auth/            אסימון JWT ב-localStorage, פענוח תפוגה, ניקוי אוטומטי ב-401
+    booking/         טיוטת הזמנה, מפת מושבים, ולידציה (zod + Luhn)
+    content/         יעדים (עברית), טקסטים כלליים
+    format/          תאריכים (שעון ישראל + לוח עברי), מחיר, משך, מרחק
+  styles.css         כל הטוקנים: צבעים, צללים, רדיוסים, טיפוגרפיה, תנועה
+tests/               בדיקות יחידה
+scripts/             שרת הדמיה
+```
+
+כל צבע, צל וגודל טקסט הוא טוקן סמנטי (`bg-surface`, `text-foreground-muted`, `shadow-glow`, `text-display`). אין ערכי צבע גולמיים ברכיבים.
+
+## נקודות הקצה שמחוברות
+
+התחברות והרשמה (`/api/auth/*`), טיסות (`GET /api/flights`, `/api/flights/{id}`), הזמנות (`POST /api/orders`, `GET /api/orders/my`, ביטול). הפרטים המדויקים ב-`src/lib/api/endpoints.ts`.
+
+## הוספת יעד או תמונה
+
+יעדים מוגדרים ב-`src/lib/content/destinations.ts` (שם, כינויים להתאמה לשדה `arrivalAirport` מהשרת, טקסטים, אבני דרך). שדה חדש בשרת שלא מופיע ברשימה יוצג בתצוגה כללית. כוכבי הלכת מצוירים בקוד (`PlanetArt`), ואין צורך בתמונות.
+
+## נגישות
+
+קישור דילוג לתוכן, landmarks, `aria-live` לתוצאות סינון, מפת מושבים כ-radiogroup עם חצים, מצבי פוקוס גלויים, ניגודיות טקסט של 6:1 לפחות, גבולות בקרים 3:1, וכיבוד `prefers-reduced-motion` (גם בפתיחה הקולנועית).
+
+מה הלקוח עושה במקום שהשרת עדיין לא תומך בו: ראו `SERVER-GAPS.md`.

@@ -1,0 +1,317 @@
+@import 'tailwindcss';
+@import '@fontsource-variable/heebo';
+@import '@fontsource-variable/frank-ruhl-libre';
+
+/*
+  מערכת העיצוב של "אל על חלל".
+  כל צבע, צל, רדיוס וטיפוגרפיה מוגדרים כאן כטוקנים סמנטיים.
+  הרכיבים משתמשים רק בשמות (bg-surface, text-foreground-muted, shadow-glow ...),
+  ולעולם לא בערכי צבע גולמיים.
+*/
+
+@theme {
+  --font-sans: 'Heebo Variable', 'Heebo', system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+  --font-display: 'Frank Ruhl Libre Variable', 'Frank Ruhl Libre', 'Times New Roman', serif;
+
+  /* ---------- טיפוגרפיה ---------- */
+  --text-display: clamp(2.75rem, 1.2rem + 6.4vw, 6.25rem);
+  --text-display--line-height: 1.02;
+  --text-headline: clamp(2rem, 1.1rem + 3.2vw, 3.75rem);
+  --text-headline--line-height: 1.08;
+  --text-title: clamp(1.375rem, 1.1rem + 1vw, 1.875rem);
+  --text-title--line-height: 1.2;
+  --text-lead: clamp(1.0625rem, 0.98rem + 0.4vw, 1.3125rem);
+  --text-lead--line-height: 1.65;
+  --text-body: 1rem;
+  --text-body--line-height: 1.7;
+  --text-caption: 0.8125rem;
+  --text-caption--line-height: 1.5;
+  --text-micro: 0.6875rem;
+  --text-micro--line-height: 1.4;
+
+  /* ---------- צבעים סמנטיים ---------- */
+  --color-background: #040813;
+  --color-background-deep: #02040b;
+  --color-surface: #0a1330;
+  --color-surface-raised: #101d45;
+  --color-surface-sunken: #060d22;
+  --color-overlay: #02040bd9;
+
+  --color-foreground: #eef3ff;
+  --color-foreground-muted: #aebcdc;
+  --color-foreground-subtle: #8ea0c8;
+
+  --color-border: #1d2d5c;
+  --color-border-strong: #2f4585;
+  /* גבול של בקרים (שדות, תיבות סימון, מושבים): לפחות 3:1 מול הרקע, לפי WCAG 1.4.11 */
+  --color-control: #4560a8;
+
+  --color-primary: #5aa9ff;
+  --color-primary-hover: #84c0ff;
+  --color-primary-pressed: #3d8fe8;
+  --color-primary-foreground: #03102a;
+  --color-primary-soft: #5aa9ff26;
+
+  --color-accent: #3fdcff;
+  --color-accent-soft: #3fdcff1f;
+
+  --color-gold: #e6c88f;
+  --color-gold-foreground: #2a1d05;
+  --color-gold-soft: #e6c88f26;
+
+  --color-success: #52e3a4;
+  --color-success-soft: #52e3a41f;
+  --color-warning: #ffc962;
+  --color-warning-soft: #ffc9621f;
+  --color-destructive: #ff7285;
+  --color-destructive-soft: #ff72851f;
+
+  --color-ring: #3fdcff;
+
+  /* גרמי שמיים: משמשים את ציורי הכוכבים בקוד (SVG) */
+  --color-planet-earth-sea: #1f6fe0;
+  --color-planet-earth-land: #3fae7a;
+  --color-planet-earth-cloud: #f2f7ff;
+  --color-planet-moon-light: #e8e9ee;
+  --color-planet-moon-dark: #6c7184;
+  --color-planet-mars-light: #e58a5a;
+  --color-planet-mars-dark: #7a2e1c;
+  --color-planet-saturn-light: #f1dba8;
+  --color-planet-saturn-dark: #a47c3d;
+  --color-planet-saturn-ring: #e8d2a0;
+  --color-planet-europa-light: #e9e2d6;
+  --color-planet-europa-dark: #8b5a45;
+  --color-planet-station-light: #cfe3ff;
+  --color-planet-station-dark: #4a6aa8;
+  --color-planet-galaxy-core: #fff3d6;
+  --color-planet-galaxy-arm: #6a7dff;
+
+  /* ---------- צללים ---------- */
+  --shadow-card: 0 1px 0 0 #ffffff0a inset, 0 28px 60px -32px #000000e6;
+  --shadow-lift: 0 1px 0 0 #ffffff12 inset, 0 40px 80px -30px #000000f2, 0 0 0 1px #2f458588;
+  --shadow-glow: 0 0 0 1px #5aa9ff55, 0 0 44px -6px #5aa9ff77;
+  --shadow-glow-accent: 0 0 0 1px #3fdcff55, 0 0 52px -8px #3fdcff77;
+  --shadow-gold: 0 0 0 1px #e6c88f55, 0 0 44px -10px #e6c88f66;
+  --shadow-focus: 0 0 0 2px var(--color-background), 0 0 0 4px var(--color-ring);
+
+  /* ---------- רדיוסים ---------- */
+  --radius-control: 0.75rem;
+  --radius-card: 1.25rem;
+  --radius-panel: 1.75rem;
+
+  /* ---------- תנועה ---------- */
+  --ease-cinematic: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-orbit: cubic-bezier(0.65, 0, 0.35, 1);
+
+  --animate-twinkle: twinkle 4s ease-in-out infinite;
+  --animate-float: float 9s ease-in-out infinite;
+  --animate-drift: drift 120s linear infinite;
+  --animate-orbit: drift 14s linear infinite;
+  --animate-orbit-slow: drift 60s linear infinite;
+  --animate-pulse-ring: pulse-ring 2.6s var(--ease-cinematic) infinite;
+  --animate-shimmer: shimmer 2.4s linear infinite;
+  --animate-rise: rise 0.9s var(--ease-cinematic) both;
+}
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 1; }
+}
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-14px); }
+}
+@keyframes drift {
+  to { transform: rotate(360deg); }
+}
+@keyframes pulse-ring {
+  0% { transform: scale(0.8); opacity: 0.7; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+@keyframes shimmer {
+  to { background-position: -200% 0; }
+}
+@keyframes rise {
+  from { opacity: 0; transform: translateY(24px); filter: blur(6px); }
+  to { opacity: 1; transform: none; filter: none; }
+}
+
+@keyframes planet-spin {
+  to { transform: translateX(-66.6667%); }
+}
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  html {
+    background: var(--color-background);
+    scroll-behavior: smooth;
+    scroll-padding-top: 6rem;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    font-family: var(--font-sans);
+    font-size: var(--text-body);
+    line-height: var(--text-body--line-height);
+    color: var(--color-foreground);
+    min-height: 100dvh;
+    overflow-x: clip;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+
+  p { text-wrap: pretty; }
+
+  ::selection {
+    background: var(--color-primary);
+    color: var(--color-primary-foreground);
+  }
+
+  :focus { outline: none; }
+  :focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 3px;
+    border-radius: var(--radius-control);
+  }
+
+  button, [role='button'], a { -webkit-tap-highlight-color: transparent; }
+
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    *, *::before, *::after {
+      animation-duration: 0.001ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.001ms !important;
+    }
+  }
+}
+
+@layer components {
+  /* מספרים ומילים לטיניות בתוך טקסט RTL: לא מתהפכים ולא "בורחים" */
+  .num {
+    unicode-bidi: isolate;
+    direction: ltr;
+    display: inline-block;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .glass {
+    background: color-mix(in oklab, var(--color-surface) 72%, transparent);
+    backdrop-filter: blur(18px) saturate(140%);
+    -webkit-backdrop-filter: blur(18px) saturate(140%);
+    border: 1px solid var(--color-border);
+  }
+
+  /* הילת מגע: עוקבת אחרי הסמן בתוך הכרטיס */
+  .spotlight {
+    position: relative;
+    isolation: isolate;
+  }
+  .spotlight::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: radial-gradient(
+      420px circle at var(--mx, 50%) var(--my, 0%),
+      var(--color-primary-soft),
+      transparent 60%
+    );
+    opacity: 0;
+    transition: opacity 0.4s var(--ease-cinematic);
+    pointer-events: none;
+    z-index: -1;
+  }
+  .spotlight:hover::before,
+  .spotlight:focus-within::before {
+    opacity: 1;
+  }
+
+  .text-shine {
+    background-image: linear-gradient(
+      100deg,
+      var(--color-foreground) 20%,
+      var(--color-accent) 45%,
+      var(--color-primary) 55%,
+      var(--color-foreground) 80%
+    );
+    background-size: 200% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .hairline {
+    height: 1px;
+    background: linear-gradient(
+      to right,
+      transparent,
+      var(--color-border-strong),
+      transparent
+    );
+  }
+
+  .noise::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.05;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+    mix-blend-mode: overlay;
+  }
+}
+
+@utility scrollbar-none {
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+}
+
+@media print {
+  body { background: #fff !important; color: #000 !important; }
+  .no-print { display: none !important; }
+  .print-only { display: block !important; }
+}
+.print-only { display: none; }
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes dialog-in {
+  from { opacity: 0; filter: blur(8px); scale: 0.96; }
+  to { opacity: 1; filter: none; scale: 1; }
+}
+
+/* הפתיחה מדולגת (ביקור חוזר / הפחתת תנועה); ואם JS נכשל, היא נעלמת מעצמה */
+.intro-skip .intro-overlay { display: none; }
+.intro-overlay { animation: intro-failsafe 0.4s 12s forwards; }
+@keyframes intro-failsafe { to { opacity: 0; visibility: hidden; pointer-events: none; } }
+
+@keyframes drift-reverse {
+  to { transform: rotate(-360deg); }
+}
+
+@keyframes trail {
+  0% { inset-inline-start: 0; opacity: 0; }
+  12% { opacity: 1; }
+  88% { opacity: 1; }
+  100% { inset-inline-start: calc(100% - 8px); opacity: 0; }
+}
+
+@keyframes ping-travel {
+  0% { inset-inline-start: 0; opacity: 0; }
+  8% { opacity: 1; }
+  92% { opacity: 1; }
+  100% { inset-inline-start: calc(100% - 11px); opacity: 0; }
+}
