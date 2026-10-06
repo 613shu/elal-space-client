@@ -8,7 +8,7 @@ import { durationMs, formatDuration } from '~/lib/format/duration'
 import { formatPrice } from '~/lib/format/money'
 
 /** טבלת השוואה: השורה הטובה ביותר בכל קטגוריה מודגשת */
-export function CompareDialog({ open, onOpenChange, flights }: { open: boolean; onOpenChange: (o: boolean) => void; flights: Flight[] }) {
+export function CompareDialog({ open, onOpenChange, flights, canBook = true }: { open: boolean; onOpenChange: (o: boolean) => void; flights: Flight[]; canBook?: boolean }) {
   const cheapest = Math.min(...flights.map((f) => f.price))
   const shortest = Math.min(...flights.map((f) => durationMs(f.departureTime, f.arrivalTime)))
   const mostSeats = Math.max(...flights.map((f) => f.availableSeats))
@@ -55,8 +55,8 @@ export function CompareDialog({ open, onOpenChange, flights }: { open: boolean; 
               <td className="border-t border-border p-3" />
               {flights.map((f) => (
                 <td key={f.id} className="border-t border-border p-3">
-                  <Link to="/flights/$flightId" params={{ flightId: String(f.id) }} className={buttonClasses({ size: 'sm', variant: isBookable(f) ? 'primary' : 'secondary' })}>
-                    {isBookable(f) ? 'לבחירה' : 'לפרטים'}
+                  <Link to="/flights/$flightId" params={{ flightId: String(f.id) }} className={buttonClasses({ size: 'sm', variant: canBook && isBookable(f) ? 'primary' : 'secondary' })}>
+                    {canBook && isBookable(f) ? 'לבחירה' : 'לפרטים'}
                   </Link>
                 </td>
               ))}

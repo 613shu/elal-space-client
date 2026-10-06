@@ -11,7 +11,7 @@ import { CardSkeletons, ErrorState } from '~/components/ui/StateViews'
 import { flightQuery } from '~/lib/api/queries'
 import { isApiError } from '~/lib/api/errors'
 import { useConflict, useDraft } from '~/lib/booking/store'
-import { useIsAuthed, useSession } from '~/lib/auth/store'
+import { isAdminProfile, useIsAuthed, useSession } from '~/lib/auth/store'
 import { hasDeparted, isScheduled, isSoldOut } from '~/lib/flights'
 import { pageHead } from '~/lib/seo'
 
@@ -37,6 +37,18 @@ function BookingLayout() {
   const conflict = useConflict(id)
 
   if (!Number.isFinite(id)) return <NotFoundPage />
+
+  if (isAdminProfile(session)) {
+    return (
+      <div className="mx-auto max-w-xl px-5 pb-16 pt-40">
+        <div role="status" className="glass flex flex-col items-center gap-5 rounded-panel p-10 text-center">
+          <h1 className="text-title">חשבון מנהל אינו מזמין מסעות</h1>
+          <p className="text-foreground-muted">כדי להזמין מסע יש להיכנס עם חשבון נוסע. את המסעות והנוסעים מנהלים מממשק הניהול.</p>
+          <Link to="/admin" className={buttonClasses()}>לממשק הניהול</Link>
+        </div>
+      </div>
+    )
+  }
 
   if (q.isPending) {
     return (

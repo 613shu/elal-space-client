@@ -6,7 +6,7 @@ import { Header } from '~/components/layout/Header'
 import { Footer } from '~/components/layout/Footer'
 import { PageTransition } from '~/components/layout/PageTransition'
 import { Nebula, Starfield } from '~/components/space/Starfield'
-import { IntroOverlay, introSkipScript } from '~/components/space/IntroOverlay'
+import { IntroOverlay, introSkipScript, useIntroReplayKey } from '~/components/space/IntroOverlay'
 import { Toaster } from '~/components/ui/Toast'
 import { pageHead } from '~/lib/seo'
 
@@ -45,6 +45,7 @@ function RootComponent() {
 
 function Shell() {
   const isHome = useRouterState({ select: (s) => s.location.pathname === '/' })
+  const introKey = useIntroReplayKey()
   return (
     <>
       <Nebula />
@@ -63,7 +64,7 @@ function Shell() {
       </main>
       <Footer />
       <Toaster />
-      {isHome && <IntroOverlay />}
+      {isHome && <IntroOverlay key={introKey} />}
     </>
   )
 }

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { motion, useMotionTemplate, useMotionValue, animate } from 'motion/react'
 import { Logo } from '~/components/brand/Logo'
 
@@ -7,6 +7,31 @@ const SEEN_KEY = 'elal.intro.v1'
 
 /** חוסם הבהוב: רץ בראש המסמך לפני הציור הראשון ומסמן אם הפתיחה צריכה להידלג */
 export const introSkipScript = `try{if(sessionStorage.getItem('${SEEN_KEY}')||matchMedia('(prefers-reduced-motion: reduce)').matches)document.documentElement.classList.add('intro-skip')}catch(e){}`
+
+/* הצגה חוזרת של הפתיחה לפי בקשה (מהכותרת העליונה) */
+let replayCount = 0
+const replaySubs = new Set<() => void>()
+const subscribeReplay = (cb: () => void) => {
+  replaySubs.add(cb)
+  return () => void replaySubs.delete(cb)
+}
+
+/** מנקה את הסימון "כבר נצפה" ומריץ את הפתיחה מחדש. מי שביקש במפורש יראה אותה גם בהפחתת תנועה. */
+export function replayIntro() {
+  try {
+    sessionStorage.removeItem(SEEN_KEY)
+  } catch {
+    /* ignore */
+  }
+  document.documentElement.classList.remove('intro-skip')
+  replayCount += 1
+  replaySubs.forEach((s) => s())
+}
+
+/** משתנה בכל בקשה להצגה חוזרת: משמש כ-key כדי שהפתיחה תיבנה מחדש */
+export function useIntroReplayKey() {
+  return useSyncExternalStore(subscribeReplay, () => replayCount, () => 0)
+}
 
 /**
  * פתיחה קולנועית, פעם אחת בכל ביקור: נקודת אור, פסוק הפתיחה, והאור נפרש ומגלה את האתר.

@@ -54,6 +54,26 @@ export interface AdminOrder extends Order {
   passenger?: FlightPassenger
 }
 
+/** AdminResponse_PassengerDTO כפי שחוזר מ-GET /api/passengers */
+export interface AdminPassenger {
+  id: number
+  name: string
+  email: string
+  flights?: Flight[] | null
+}
+
+/** AdminRequest_FlightDTO */
+export interface FlightRequest {
+  flightNumber: string
+  departureAirport: string
+  arrivalAirport: string
+  departureTime: string
+  arrivalTime: string
+  numOfSeats: number
+  price: number
+  amenityIds: number[]
+}
+
 /** עטיפת העימוד: Ok(new { items, totalCount }) */
 export interface Paged<T> {
   items: T[]

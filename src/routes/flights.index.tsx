@@ -9,12 +9,13 @@ import { DemoNotice } from '~/components/layout/DemoNotice'
 import { Button } from '~/components/ui/Button'
 import { Dialog } from '~/components/ui/Dialog'
 import { Eyebrow } from '~/components/ui/Eyebrow'
+import { Portal } from '~/components/ui/Portal'
 import { Compare, Filter } from '~/components/ui/Icons'
 import { CardSkeletons, EmptyState, ErrorState } from '~/components/ui/StateViews'
 import { Tab, TabList, Tabs } from '~/components/ui/Tabs'
 import { flightsQuery } from '~/lib/api/queries'
 import { isApiError } from '~/lib/api/errors'
-import { useIsAuthed } from '~/lib/auth/store'
+import { useIsAdmin, useIsAuthed } from '~/lib/auth/store'
 import { OPEN_DESTINATIONS } from '~/lib/content/destinations'
 import { amenityNames, destinationOf, hasDeparted, isScheduled, sortByDeparture } from '~/lib/flights'
 import { monthKey } from '~/lib/format/date'
@@ -50,6 +51,7 @@ function FlightsPage() {
   const search = Route.useSearch()
   const nav = useNavigate({ from: '/flights/' })
   const authed = useIsAuthed()
+  const isAdmin = useIsAdmin()
   const reduce = useReducedMotion()
   const q = useQuery(flightsQuery(authed))
   const [compareIds, setCompareIds] = useState<number[]>([])
@@ -130,7 +132,7 @@ function FlightsPage() {
   )
 
   return (
-    <div className="mx-auto max-w-7xl px-5 pb-8 pt-32 sm:px-8 lg:pt-40">
+    <div className={`mx-auto max-w-7xl px-5 pt-32 sm:px-8 lg:pt-40 ${compareIds.length > 0 ? 'pb-28' : 'pb-8'}`}>
       <header className="flex max-w-3xl flex-col gap-5">
         <Eyebrow>מסעות</Eyebrow>
         <h1 className="text-headline">בחרו את הדרך אל הלא־נודע</h1>
@@ -210,6 +212,7 @@ function FlightsPage() {
                     compared={compareIds.includes(f.id)}
                     compareDisabled={compareIds.length >= MAX_COMPARE}
                     onToggleCompare={toggleCompare}
+                    canBook={!isAdmin}
                   />
                 </motion.li>
               ))}
@@ -218,28 +221,38 @@ function FlightsPage() {
         </section>
       </div>
 
-      <AnimatePresence>
-        {compareIds.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 40 }}
-            className="glass fixed inset-x-4 bottom-4 z-30 mx-auto flex max-w-xl items-center justify-between gap-4 rounded-full px-5 py-3 shadow-lift"
-          >
-            <p className="text-body">
-              <span className="num">{compareIds.length}</span> מסעות להשוואה
-            </p>
-            <div className="flex gap-2">
-              <Button size="sm" variant="ghost" onClick={() => setCompareIds([])}>ניקוי</Button>
-              <Button size="sm" icon={<Compare className="size-4" />} disabled={compared.length < 2} onClick={() => setCompareOpen(true)}>
-                השוואה
-              </Button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* סרגל ההשוואה צף בתחתית המסך. הוא מוצג תחת body: בתוך העמוד הוא היה ננעץ בתחתית הדף כולו */}
+      <Portal>
+        <AnimatePresence>
+          {compareIds.length > 0 && (
+            <motion.div
+              role="region"
+              aria-label="השוואת מסעות"
+              initial={reduce ? { opacity: 0 } : { opacity: 0, y: 40, scale: 0.96 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={reduce ? { opacity: 0 } : { opacity: 0, y: 40, scale: 0.96 }}
+              transition={{ type: 'spring', stiffness: 320, damping: 28 }}
+              className="no-print glass fixed inset-x-4 bottom-5 z-30 mx-auto flex max-w-xl items-center justify-between gap-4 rounded-full border-primary/50 py-2.5 pe-2.5 ps-6 shadow-lift"
+            >
+              <p className="text-body" aria-live="polite">
+                {compared.length < 2 ? (
+                  <>נבחר מסע אחד. <span className="text-foreground-muted">סמנו עוד אחד כדי להשוות.</span></>
+                ) : (
+                  <><span className="num font-semibold text-primary">{compared.length}</span> מסעות להשוואה</>
+                )}
+              </p>
+              <div className="flex shrink-0 gap-2">
+                <Button size="sm" variant="ghost" onClick={() => setCompareIds([])}>ניקוי</Button>
+                <Button size="sm" icon={<Compare className="size-4" />} disabled={compared.length < 2} onClick={() => setCompareOpen(true)}>
+                  השוואה
+                </Button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </Portal>
 
-      {compared.length >= 2 && <CompareDialog open={compareOpen} onOpenChange={setCompareOpen} flights={compared} />}
+      {compared.length >= 2 && <CompareDialog open={compareOpen} onOpenChange={setCompareOpen} flights={compared} canBook={!isAdmin} />}
 
       <Dialog open={filtersOpen} onOpenChange={setFiltersOpen} title="סינון ומיון" placement="sheet">
         {filters}

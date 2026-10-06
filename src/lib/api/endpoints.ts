@@ -9,8 +9,12 @@ import {
 } from './demo-data'
 import { ApiError, type ErrorKind, isApiError } from './errors'
 import type {
+  AdminOrder,
+  AdminPassenger,
+  Amenity,
   AuthResponse,
   Flight,
+  FlightRequest,
   LoginRequest,
   Order,
   Paged,
@@ -156,3 +160,33 @@ export async function cancelOrder(order: Order): Promise<void> {
   }
   await http.del(`/orders/${order.id}`)
 }
+
+/* ------------------------------ ניהול (Admin בלבד) ------------------------------ */
+
+export interface AdminData {
+  flights: Flight[]
+  orders: AdminOrder[]
+  passengers: AdminPassenger[]
+}
+
+/**
+ * כל מה שממשק הניהול צריך, בקריאה אחת. תמיד מהשרת האמיתי:
+ * אין כאן נתוני הדגמה, כי מנהל חייב לראות את המצב כפי שהוא.
+ */
+export async function fetchAdminData(signal?: AbortSignal): Promise<AdminData> {
+  const [flights, orders, passengers] = await Promise.all([
+    getAllPages<Flight>('/flights', signal),
+    getAllPages<AdminOrder>('/orders', signal),
+    getAllPages<AdminPassenger>('/passengers', signal),
+  ])
+  return { flights, orders, passengers }
+}
+
+export const fetchAmenities = (signal?: AbortSignal) => getAllPages<Amenity>('/amenities', signal)
+
+export const createFlight = (req: FlightRequest) => http.post<Flight>('/flights', req)
+
+/** מחיקה רכה בשרת: המסע מסומן כמבוטל, וכל ההזמנות המאושרות שלו מתבטלות */
+export const cancelFlight = (flightId: number) => http.del(`/flights/${flightId}`)
+
+export const adminCancelOrder = (orderId: number) => http.del(`/orders/${orderId}`)

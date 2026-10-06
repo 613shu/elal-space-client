@@ -11,7 +11,11 @@ export interface Session {
 
 const KEY = 'elal.session.v1'
 
+/** למה הסשן האחרון הסתיים: התנתקות יזומה, או שפג תוקף / השרת דחה את האסימון */
+export type SessionEnd = 'logout' | 'expired'
+
 let session: Session | null = null
+let lastEnd: { reason: SessionEnd; at: number } | null = null
 let hydrated = false
 let expiryTimer: ReturnType<typeof setTimeout> | undefined
 const listeners = new Set<() => void>()
@@ -26,7 +30,7 @@ function scheduleExpiry() {
   const ms = session.expiresAt - Date.now()
   if (ms <= 0) return void clearSession()
   // setTimeout מוגבל ל-~24.8 ימים; הטוקן חי שעה, אבל נגן בכל זאת
-  expiryTimer = setTimeout(clearSession, Math.min(ms, 2 ** 31 - 1))
+  expiryTimer = setTimeout(() => clearSession(), Math.min(ms, 2 ** 31 - 1))
 }
 
 function hydrate() {
@@ -49,6 +53,7 @@ function hydrate() {
 
 export function setSession(token: string, profile: LoginResult) {
   session = { token, profile, expiresAt: decodeJwtExp(token) }
+  lastEnd = null
   try {
     window.localStorage.setItem(KEY, JSON.stringify(session))
   } catch {
@@ -58,7 +63,8 @@ export function setSession(token: string, profile: LoginResult) {
   emit()
 }
 
-export function clearSession() {
+export function clearSession(reason: SessionEnd = 'expired') {
+  if (session) lastEnd = { reason, at: Date.now() }
   session = null
   if (expiryTimer) clearTimeout(expiryTimer)
   try {
@@ -74,6 +80,11 @@ export function getSession(): Session | null {
   return session
 }
 
+/** הסיבה שבגללה הסשן הסתיים, אם זה קרה ממש עכשיו (בשניות האחרונות); אחרת null */
+export function getRecentSessionEnd(withinMs = 3000): SessionEnd | null {
+  return lastEnd && Date.now() - lastEnd.at <= withinMs ? lastEnd.reason : null
+}
+
 export function getToken(): string | null {
   return getSession()?.token ?? null
 }
@@ -83,6 +94,8 @@ function subscribe(cb: () => void) {
   listeners.add(cb)
   const onStorage = (e: StorageEvent) => {
     if (e.key !== KEY) return
+    // התנתקות בלשונית אחרת: גם כאן זו התנתקות יזומה, לא תקלה
+    if (session && !e.newValue) lastEnd = { reason: 'logout', at: Date.now() }
     session = e.newValue ? (JSON.parse(e.newValue) as Session) : null
     scheduleExpiry()
     emit()
@@ -101,4 +114,10 @@ export function useSession(): Session | null {
 
 export function useIsAuthed() {
   return useSession() !== null
+}
+
+export const isAdminProfile = (s: Session | null) => s?.profile.role === 'Admin'
+
+export function useIsAdmin() {
+  return isAdminProfile(useSession())
 }

@@ -18,7 +18,7 @@ import { ErrorState, CardSkeletons } from '~/components/ui/StateViews'
 import { LaunchClock } from '~/components/home/LaunchClock'
 import { flightQuery } from '~/lib/api/queries'
 import { isApiError } from '~/lib/api/errors'
-import { useIsAuthed } from '~/lib/auth/store'
+import { useIsAdmin, useIsAuthed } from '~/lib/auth/store'
 import { destinationFor } from '~/lib/content/generic'
 import { amenityNames, hasDeparted, isBookable, isLastSeats, isScheduled, isSoldOut, seatsLabel } from '~/lib/flights'
 import { formatDate, formatHebrewDate, formatTime, formatWeekday } from '~/lib/format/date'
@@ -35,6 +35,7 @@ function FlightDetails() {
   const { flightId } = Route.useParams()
   const id = Number(flightId)
   const authed = useIsAuthed()
+  const isAdmin = useIsAdmin()
   const reduce = useReducedMotion()
   const q = useQuery({ ...flightQuery(id, authed), enabled: Number.isFinite(id) })
 
@@ -150,7 +151,14 @@ function FlightDetails() {
               ))}
             </ul>
 
-            {bookable ? (
+            {isAdmin ? (
+              <div className="flex flex-col gap-3">
+                <Link to="/admin" search={{ flight: f.id }} className={buttonClasses({ size: 'lg', block: true, variant: 'secondary' })}>
+                  לרשימת הנוסעים במסע
+                </Link>
+                <p className="text-center text-caption text-foreground-subtle">חשבון מנהל צופה במסעות ומנהל אותם, ואינו מזמין.</p>
+              </div>
+            ) : bookable ? (
               <Link to="/booking/$flightId/seats" params={{ flightId: String(f.id) }} className={buttonClasses({ size: 'lg', block: true })}>
                 בחירת מושב והמשך
               </Link>

@@ -14,14 +14,33 @@ let seq = 0
 const subs = new Set<() => void>()
 const emit = () => subs.forEach((s) => s())
 
+const MAX_VISIBLE = 3
+const timers = new Map<number, ReturnType<typeof setTimeout>>()
+
+function dismiss(id: number) {
+  const timer = timers.get(id)
+  if (timer) clearTimeout(timer)
+  timers.delete(id)
+  items = items.filter((t) => t.id !== id)
+  emit()
+}
+
+/**
+ * הודעה קופצת. הודעה זהה שכבר מוצגת לא נערמת שוב: רק הזמן שלה מתחדש.
+ * לכל היותר שלוש הודעות יחד, כדי שהמסך לא יתמלא.
+ */
 export function toast(text: string, tone: ToastTone = 'info', ms = 4800) {
+  const same = items.find((t) => t.text === text)
+  if (same) {
+    clearTimeout(timers.get(same.id))
+    timers.set(same.id, setTimeout(() => dismiss(same.id), ms))
+    return
+  }
   const id = ++seq
   items = [...items, { id, tone, text }]
+  items.slice(0, -MAX_VISIBLE).forEach((t) => dismiss(t.id))
+  timers.set(id, setTimeout(() => dismiss(id), ms))
   emit()
-  setTimeout(() => {
-    items = items.filter((t) => t.id !== id)
-    emit()
-  }, ms)
 }
 
 const subscribe = (cb: () => void) => {

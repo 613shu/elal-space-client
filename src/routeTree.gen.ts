@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AccountRouteImport } from './routes/account'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as BookingFlightIdRouteImport } from './routes/booking.$flightId'
 import { Route as ConfirmationOrderIdRouteImport } from './routes/confirmation.$orderId'
@@ -31,6 +32,11 @@ const IndexRoute = IndexRouteImport.update({
 const AccountRoute = AccountRouteImport.update({
   id: '/account',
   path: '/account',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -93,6 +99,7 @@ const BookingFlightIdSeatsRoute = BookingFlightIdSeatsRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
+  '/admin': typeof AdminRoute
   '/dashboard': typeof DashboardRoute
   '/booking/$flightId': typeof BookingFlightIdRouteWithChildren
   '/confirmation/$orderId': typeof ConfirmationOrderIdRoute
@@ -108,6 +115,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
+  '/admin': typeof AdminRoute
   '/dashboard': typeof DashboardRoute
   '/confirmation/$orderId': typeof ConfirmationOrderIdRoute
   '/destinations/$slug': typeof DestinationsSlugRoute
@@ -123,6 +131,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
+  '/admin': typeof AdminRoute
   '/dashboard': typeof DashboardRoute
   '/booking/$flightId': typeof BookingFlightIdRouteWithChildren
   '/confirmation/$orderId': typeof ConfirmationOrderIdRoute
@@ -140,6 +149,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/account'
+    | '/admin'
     | '/dashboard'
     | '/booking/$flightId'
     | '/confirmation/$orderId'
@@ -155,6 +165,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/account'
+    | '/admin'
     | '/dashboard'
     | '/confirmation/$orderId'
     | '/destinations/$slug'
@@ -169,6 +180,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/account'
+    | '/admin'
     | '/dashboard'
     | '/booking/$flightId'
     | '/confirmation/$orderId'
@@ -185,6 +197,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AccountRoute: typeof AccountRoute
+  AdminRoute: typeof AdminRoute
   DashboardRoute: typeof DashboardRoute
   BookingFlightIdRoute: typeof BookingFlightIdRouteWithChildren
   ConfirmationOrderIdRoute: typeof ConfirmationOrderIdRoute
@@ -208,6 +221,13 @@ declare module '@tanstack/react-router' {
       path: '/account'
       fullPath: '/account'
       preLoaderRoute: typeof AccountRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -311,6 +331,7 @@ const BookingFlightIdRouteWithChildren = BookingFlightIdRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccountRoute: AccountRoute,
+  AdminRoute: AdminRoute,
   DashboardRoute: DashboardRoute,
   BookingFlightIdRoute: BookingFlightIdRouteWithChildren,
   ConfirmationOrderIdRoute: ConfirmationOrderIdRoute,

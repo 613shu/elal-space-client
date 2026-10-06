@@ -20,7 +20,7 @@ interface AccountSearch {
 }
 
 /** מונע redirect לאתר אחר: רק נתיבים פנימיים */
-export const safeRedirect = (r?: string) => (r && r.startsWith('/') && !r.startsWith('//') ? r : undefined)
+export const safeRedirect = (r?: string) => (r && r.startsWith('/') && !r.startsWith('//') && !r.startsWith('/account') ? r : undefined)
 
 export const Route = createFileRoute('/account')({
   validateSearch: (s: Record<string, unknown>): AccountSearch => ({
@@ -55,7 +55,9 @@ function AccountPage() {
   const [formError, setFormError] = useState<ApiError | null>(null)
   const [vals, setVals] = useState({ name: '', email: '', password: '', confirm: '' })
 
-  const target = safeRedirect(search.redirect) ?? '/dashboard'
+  // מנהל נכנס תמיד לממשק הניהול: אין לו מה לחפש בתהליך ההזמנה שממנו אולי הופנה
+  const wanted = safeRedirect(search.redirect)
+  const target = session?.profile.role === 'Admin' ? (wanted?.startsWith('/admin') ? wanted : '/admin') : (wanted ?? '/dashboard')
 
   useEffect(() => {
     if (session) nav({ to: target, replace: true })

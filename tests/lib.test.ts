@@ -7,6 +7,8 @@ import { resolveDestination } from '~/lib/content/destinations'
 import { formatDuration } from '~/lib/format/duration'
 import { formatDistance } from '~/lib/format/money'
 import { parseServerDate } from '~/lib/format/date'
+import { buildCustomerRows, buildFlightRows, buildOverview } from '~/lib/admin/stats'
+import type { AdminOrder, Flight } from '~/lib/api/types'
 
 describe('luhn', () => {
   it('מאשר מספר כרטיס תקין ודוחה שגוי', () => {
@@ -87,5 +89,49 @@ describe('פורמט', () => {
   })
   it('תאריך ללא אזור זמן נחשב UTC', () => {
     expect(parseServerDate('2027-04-18T06:30:00').toISOString()).toBe('2027-04-18T06:30:00.000Z')
+  })
+})
+
+describe('נתוני ממשק הניהול', () => {
+  const flight = (id: number, over: Partial<Flight> = {}): Flight => ({
+    id, flightNumber: `ES ${id}`, departureAirport: 'תל אביב', arrivalAirport: 'הירח',
+    departureTime: '2099-01-01T06:00:00Z', arrivalTime: '2099-01-04T06:00:00Z',
+    numOfSeats: 10, availableSeats: 10, amenities: [], flightStatus: 'Scheduled', price: 1000, ...over,
+  })
+  const order = (id: number, f: Flight, passengerId: number, status = 'Confirmed'): AdminOrder => ({
+    id, flight: f, status, orderDateTime: '2026-10-01T10:00:00Z', passenger: { id: passengerId, name: `נוסע ${passengerId}`, email: `p${passengerId}@x.il` },
+  })
+
+  it('סופר נוסעים לפי מונה המושבים, ומפריד מושבים בלי הזמנה באתר', () => {
+    const f = flight(1, { availableSeats: 6 })
+    const [row] = buildFlightRows([f], [order(1, f, 1), order(2, f, 2), order(3, f, 3, 'Cancelled')])
+    expect(row.booked).toBe(4)
+    expect(row.orders).toHaveLength(2)
+    expect(row.offline).toBe(2)
+    expect(row.occupancy).toBeCloseTo(0.4)
+    expect(row.revenue).toBe(2000)
+  })
+
+  it('מסע שבוטל לא נספר במסעות המתוכננים', () => {
+    const rows = buildFlightRows([flight(1, { availableSeats: 5 }), flight(2, { flightStatus: 'Cancelled', availableSeats: 3 })], [])
+    const o = buildOverview(rows, 7)
+    expect(o.upcomingFlights).toBe(1)
+    expect(o.travelers).toBe(5)
+    expect(o.customers).toBe(7)
+    expect(rows[1].booked).toBe(0)
+  })
+
+  it('מחשב לכל לקוח הזמנות פעילות, סכום והמסע הקרוב', () => {
+    const near = flight(1, { departureTime: '2099-01-01T06:00:00Z' })
+    const far = flight(2, { departureTime: '2099-06-01T06:00:00Z', price: 500 })
+    const rows = buildCustomerRows(
+      [{ id: 1, name: 'א', email: 'a@x.il' }, { id: 2, name: 'ב', email: 'b@x.il' }],
+      [order(1, far, 1), order(2, near, 1), order(3, near, 2, 'Cancelled')],
+    )
+    expect(rows[0].active).toHaveLength(2)
+    expect(rows[0].next?.flight.id).toBe(1)
+    expect(rows[0].spent).toBe(1500)
+    expect(rows[1].active).toHaveLength(0)
+    expect(rows[1].next).toBeUndefined()
   })
 })

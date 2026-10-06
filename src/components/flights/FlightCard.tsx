@@ -16,11 +16,13 @@ interface Props {
   compared?: boolean
   compareDisabled?: boolean
   onToggleCompare?: (f: Flight) => void
+  /** מנהל צופה במסעות אבל אינו מזמין */
+  canBook?: boolean
 }
 
-export function FlightCard({ flight: f, compared, compareDisabled, onToggleCompare }: Props) {
+export function FlightCard({ flight: f, compared, compareDisabled, onToggleCompare, canBook = true }: Props) {
   const dest = destinationOf(f)
-  const bookable = isBookable(f)
+  const bookable = canBook && isBookable(f)
   const spot = spotlightHandlers()
   const names = amenityNames(f)
   const fill = Math.max(0, Math.min(1, f.availableSeats / Math.max(1, f.numOfSeats)))

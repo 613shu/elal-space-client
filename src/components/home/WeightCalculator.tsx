@@ -1,5 +1,5 @@
 import * as Slider from '@radix-ui/react-slider'
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { motion, useReducedMotion } from 'motion/react'
 import { Link } from '@tanstack/react-router'
 import { DESTINATIONS } from '~/lib/content/destinations'
@@ -7,8 +7,9 @@ import { DESTINATIONS } from '~/lib/content/destinations'
 const EARTH = { slug: 'earth', name: 'כדור הארץ', g: 1 }
 
 /** "כמה תשקלו שם?": המחשבה הראשונה של כל נוסע. משקל = מסה × כבידה, ולכן הכול נגזר מ-0.16G וחבריו. */
-export function WeightCalculator() {
+export function WeightCalculator({ embedded = false }: { embedded?: boolean }) {
   const [kg, setKg] = useState(70)
+  const id = useId()
   const reduce = useReducedMotion()
   const rows = [
     EARTH,
@@ -17,26 +18,30 @@ export function WeightCalculator() {
   const max = Math.max(...rows.map((r) => r.g))
 
   return (
-    <div className="glass grid gap-10 rounded-panel p-6 shadow-card sm:p-10 lg:grid-cols-[0.8fr_1.2fr] lg:gap-14">
+    <div className={embedded ? 'grid gap-8 lg:grid-cols-[0.8fr_1.2fr] lg:gap-12' : 'glass grid gap-10 rounded-panel p-6 shadow-card sm:p-10 lg:grid-cols-[0.8fr_1.2fr] lg:gap-14'}>
       <div className="flex flex-col justify-center gap-6">
-        <h3 className="text-headline">כמה תשקלו שם?</h3>
-        <p className="text-lead text-foreground-muted">
-          המסה שלכם נשארת זהה בכל מקום. מה שמשתנה הוא הכבידה, ואיתה מה שהמאזניים אומרים. גררו ותראו.
-        </p>
+        {!embedded && <h3 className="text-headline">כמה תשקלו שם?</h3>}
+        {embedded ? (
+          <p className="text-lead text-foreground-muted">גררו את המחוון ותראו מה יראו המאזניים בכל יעד.</p>
+        ) : (
+          <p className="text-lead text-foreground-muted">
+            המסה שלכם נשארת זהה בכל מקום. מה שמשתנה הוא הכבידה, ואיתה מה שהמאזניים אומרים. גררו ותראו.
+          </p>
+        )}
         <div className="flex flex-col gap-4">
-          <label id="kg-label" htmlFor="kg" className="flex items-baseline justify-between text-caption text-foreground-muted">
+          <label id={`${id}-label`} htmlFor={id} className="flex items-baseline justify-between text-caption text-foreground-muted">
             <span>המשקל שלכם בכדור הארץ</span>
-            <output htmlFor="kg" className="text-title text-foreground"><span className="num">{kg}</span> ק״ג</output>
+            <output htmlFor={id} className="text-title text-foreground"><span className="num">{kg}</span> ק״ג</output>
           </label>
           <Slider.Root
-            id="kg"
+            id={id}
             dir="rtl"
             min={30}
             max={150}
             step={1}
             value={[kg]}
             onValueChange={([v]) => setKg(v)}
-            aria-labelledby="kg-label"
+            aria-labelledby={`${id}-label`}
             className="relative flex h-8 w-full touch-none select-none items-center"
           >
             <Slider.Track className="relative h-1.5 grow rounded-full bg-border">

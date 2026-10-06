@@ -4,6 +4,7 @@
  * מיועד לפיתוח ולבדיקות של הלקוח כשהשרת האמיתי לא רץ.  הרצה:  node scripts/mock-server.mjs
  *
  * משתמשים: passenger@example.com / Passw0rd!   ו-   admin@example.com / Passw0rd!
+ * נתיבי מנהל: GET /api/orders, GET /api/passengers, GET /api/amenities, POST/DELETE /api/flights, DELETE /api/passengers/:id
  * בדיקת תחרות: POST /__mock/take-last-seat/<flightId>  (נוסע אחר "גונב" את המושב האחרון)
  */
 import http from 'node:http'
@@ -41,7 +42,21 @@ const users = [
   { id: 1, name: 'ישי כהן', email: 'passenger@example.com', password: 'Passw0rd!', role: 'Passenger' },
   { id: 2, name: 'מנהלת מערכת', email: 'admin@example.com', password: 'Passw0rd!', role: 'Admin' },
 ]
-const orders = []
+users.push(
+  { id: 3, name: 'נועה לוי', email: 'noa@example.com', password: 'Passw0rd!', role: 'Passenger' },
+  { id: 4, name: 'אברהם פרידמן', email: 'avraham@example.com', password: 'Passw0rd!', role: 'Passenger' },
+  { id: 5, name: 'רחל שטרן', email: 'rachel@example.com', password: 'Passw0rd!', role: 'Passenger' },
+  { id: 6, name: 'משה גולדברג', email: 'moshe@example.com', password: 'Passw0rd!', role: 'Passenger', isActive: false },
+)
+// הזמנות התחלתיות, כדי שלממשק המנהל יהיה מה להציג (המושבים שלהן כבר מנוכים מ-availableSeats)
+const orders = [
+  { id: 91, flightId: 1, passengerId: 3, orderDateTime: '2026-09-28T09:12:00Z', status: 'Confirmed' },
+  { id: 92, flightId: 1, passengerId: 4, orderDateTime: '2026-09-30T18:40:00Z', status: 'Confirmed' },
+  { id: 93, flightId: 3, passengerId: 3, orderDateTime: '2026-10-01T07:05:00Z', status: 'Confirmed' },
+  { id: 94, flightId: 4, passengerId: 5, orderDateTime: '2026-10-02T12:30:00Z', status: 'Confirmed' },
+  { id: 95, flightId: 2, passengerId: 5, orderDateTime: '2026-10-03T15:00:00Z', status: 'Cancelled' },
+  { id: 96, flightId: 5, passengerId: 4, orderDateTime: '2026-10-04T08:20:00Z', status: 'Confirmed' },
+]
 let orderSeq = 100
 
 const b64 = (o) => Buffer.from(typeof o === 'string' ? o : JSON.stringify(o)).toString('base64url')
@@ -83,6 +98,8 @@ const body = (req) => new Promise((resolve) => {
   req.on('end', () => { try { resolve(d ? JSON.parse(d) : {}) } catch { resolve(null) } })
 })
 const orderDto = (o) => ({ id: o.id, flight: flights.find((f) => f.id === o.flightId), orderDateTime: o.orderDateTime, status: o.status })
+const passengerDto = (u) => ({ id: u.id, name: u.name, email: u.email, flights: [] })
+const adminOrderDto = (o) => ({ ...orderDto(o), passenger: passengerDto(users.find((u) => u.id === o.passengerId)) })
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host}`)
@@ -125,6 +142,47 @@ const server = http.createServer(async (req, res) => {
       if (AUTH_REQUIRED_FOR_FLIGHTS && !needAuth()) return
       const f = flights.find((x) => x.id === Number(fm[1]))
       return f ? send(res, 200, f) : err(res, 404, 'Flight not found')
+    }
+
+    if (path === '/api/flights' && method === 'POST') {
+      if (!needAuth(['Admin'])) return
+      const b = await body(req)
+      if (!b?.flightNumber || !b?.arrivalAirport) return send(res, 400, { title: 'One or more validation errors occurred.', status: 400, errors: { FlightNumber: ['Required'] } }, 'application/problem+json')
+      if (new Date(b.arrivalTime) <= new Date(b.departureTime)) return err(res, 400, 'Arrival time must be after departure time')
+      const f = mk(Math.max(...flights.map((x) => x.id)) + 1, b.flightNumber, b.departureAirport, b.arrivalAirport, b.departureTime, b.arrivalTime, b.numOfSeats, b.numOfSeats, b.price, b.amenityIds ?? [])
+      flights.push(f)
+      return send(res, 201, f)
+    }
+    if (fm && method === 'DELETE') {
+      if (!needAuth(['Admin'])) return
+      const f = flights.find((x) => x.id === Number(fm[1]))
+      if (!f) return err(res, 404, 'Flight not found')
+      f.flightStatus = 'Cancelled'
+      orders.filter((o) => o.flightId === f.id && o.status === 'Confirmed').forEach((o) => (o.status = 'Cancelled'))
+      return send(res, 204)
+    }
+
+    if (path === '/api/amenities' && method === 'GET') {
+      if (!needAuth()) return
+      return send(res, 200, page(amenities, url))
+    }
+
+    if (path === '/api/passengers' && method === 'GET') {
+      if (!needAuth(['Admin'])) return
+      return send(res, 200, page(users.filter((u) => u.role === 'Passenger' && u.isActive !== false).map(passengerDto), url))
+    }
+    const pm = path.match(/^\/api\/passengers\/(\d+)$/)
+    if (pm && method === 'DELETE') {
+      if (!needAuth(['Admin'])) return
+      const u = users.find((x) => x.id === Number(pm[1]) && x.role === 'Passenger')
+      if (!u) return err(res, 404, 'Passenger not found')
+      u.isActive = false
+      return send(res, 204)
+    }
+
+    if (path === '/api/orders' && method === 'GET') {
+      if (!needAuth(['Admin'])) return
+      return send(res, 200, page(orders.map(adminOrderDto), url))
     }
 
     if (path === '/api/orders/my' && method === 'GET') {

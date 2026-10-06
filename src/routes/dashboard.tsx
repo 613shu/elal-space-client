@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Link, createFileRoute } from '@tanstack/react-router'
+import { Link, Navigate, createFileRoute } from '@tanstack/react-router'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { LaunchClock } from '~/components/home/LaunchClock'
 import { RequireAuth } from '~/components/booking/RequireAuth'
@@ -81,6 +81,9 @@ function Dashboard() {
     },
   })
 
+  // למנהל יש מרכז בקרה משלו
+  if (session.profile.role === 'Admin') return <Navigate to="/admin" replace />
+
   return (
     <div className="mx-auto max-w-6xl px-5 pb-16 pt-32 sm:px-8 lg:pt-40">
       <header className="flex flex-col gap-4">
@@ -101,12 +104,6 @@ function Dashboard() {
         )}
         <DemoNotice source={q.data?.source} />
       </header>
-
-      {!isPassenger && (
-        <div className="mt-12">
-          <EmptyState title="מרכז הבקרה זמין לנוסעים" text="חשבון מנהל אינו מזמין מסעות. ניהול הטיסות והמשתמשים מתבצע דרך ממשק הניהול של השרת." action={<Link to="/flights" className={buttonClasses()}>לצפייה במסעות</Link>} />
-        </div>
-      )}
 
       {isPassenger && q.isPending && <div className="mt-12"><CardSkeletons count={2} /></div>}
       {isPassenger && q.isError && (
