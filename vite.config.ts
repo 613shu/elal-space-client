@@ -17,6 +17,7 @@ export default defineConfig(({ mode }) => {
         '/api': { target, changeOrigin: true, secure: false },
       },
     },
+    preview: { allowedHosts: ['.onrender.com'] },
     plugins: [
       tanstackStart(), // חייב לבוא לפני react()
       viteReact(),
