@@ -25,10 +25,11 @@ interface Props {
   rows: FlightRow[]
   onShowPassengers: (row: FlightRow) => void
   onCancel: (row: FlightRow) => void
+  onEdit: (row: FlightRow) => void
   onCreate: () => void
 }
 
-export function FlightsPanel({ rows, onShowPassengers, onCancel, onCreate }: Props) {
+export function FlightsPanel({ rows, onShowPassengers, onCancel, onEdit, onCreate }: Props) {
   const [query, setQuery] = useState('')
   const [phase, setPhase] = useState<PhaseFilter>('upcoming')
   const [sort, setSort] = useState<Sort>('date')
@@ -116,9 +117,14 @@ export function FlightsPanel({ rows, onShowPassengers, onCancel, onCreate }: Pro
                     נוסעים
                   </Button>
                   {r.phase === 'upcoming' && (
-                    <Button size="sm" variant="ghost" onClick={() => onCancel(r)} aria-label={`ביטול מסע ${f.flightNumber}`}>
-                      ביטול
-                    </Button>
+                    <>
+                      <Button size="sm" variant="ghost" onClick={() => onEdit(r)} aria-label={`עריכת מסע ${f.flightNumber}`}>
+                        עריכה
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => onCancel(r)} aria-label={`ביטול מסע ${f.flightNumber}`}>
+                        ביטול
+                      </Button>
+                    </>
                   )}
                 </div>
               </Cell>

@@ -14,7 +14,7 @@ import { toast } from '~/components/ui/Toast'
 import { Reveal } from '~/components/ui/Reveal'
 import { cancelOrder } from '~/lib/api/endpoints'
 import { isApiError } from '~/lib/api/errors'
-import { myOrdersQuery } from '~/lib/api/queries'
+import { meQuery, myOrdersQuery } from '~/lib/api/queries'
 import type { Order } from '~/lib/api/types'
 import { useSession } from '~/lib/auth/store'
 import { useHydrated } from '~/hooks/useHydrated'
@@ -49,6 +49,8 @@ function Dashboard() {
   const qc = useQueryClient()
   const isPassenger = session.profile.role === 'Passenger'
   const q = useQuery({ ...myOrdersQuery(isPassenger ? session.profile.id : null) })
+  const me = useQuery({ ...meQuery(isPassenger ? session.profile.id : null) })
+  const name = me.data?.name ?? session.profile.name
   const [toCancel, setToCancel] = useState<Order | null>(null)
 
   const orders = useMemo(() => [...(q.data?.orders ?? [])].sort((a, b) => parseServerDate(b.flight.departureTime).getTime() - parseServerDate(a.flight.departureTime).getTime()), [q.data])
@@ -89,7 +91,7 @@ function Dashboard() {
       <header className="flex flex-col gap-4">
         <p className="text-caption text-accent">מרכז הבקרה</p>
         <h1 className="text-headline">
-          {hydrated ? greeting() : 'שלום'}, {session.profile.name.split(' ')[0]}.
+          {hydrated ? greeting() : 'שלום'}, {name.split(' ')[0]}.
         </h1>
         {isPassenger && q.isSuccess && (
           <p className="text-lead text-foreground-muted">
@@ -120,7 +122,7 @@ function Dashboard() {
 
       {next && (
         <Reveal className="mt-12 flex flex-col gap-6">
-          <NextTrip order={next} passenger={session.profile.name} />
+          <NextTrip order={next} passenger={name} />
           <LaunchClock flight={next.flight} />
         </Reveal>
       )}

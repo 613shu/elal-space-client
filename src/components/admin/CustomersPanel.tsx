@@ -8,7 +8,7 @@ import { Avatar, Cell, Chips, DataTable, Row, SearchBox, TableEmpty } from './pa
 
 type Filter = 'all' | 'booked' | 'idle'
 
-export function CustomersPanel({ rows, onShow }: { rows: CustomerRow[]; onShow: (row: CustomerRow) => void }) {
+export function CustomersPanel({ rows, onShow, onBlock }: { rows: CustomerRow[]; onShow: (row: CustomerRow) => void; onBlock: (row: CustomerRow) => void }) {
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState<Filter>('all')
 
@@ -79,9 +79,12 @@ export function CustomersPanel({ rows, onShow }: { rows: CustomerRow[]; onShow: 
               <span className="num whitespace-nowrap">{r.spent > 0 ? formatPrice(r.spent) : '—'}</span>
             </Cell>
             <Cell>
-              <div className="flex justify-end">
+              <div className="flex justify-end gap-2">
                 <Button size="sm" variant="secondary" onClick={() => onShow(r)}>
                   פרטים
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => onBlock(r)} aria-label={`חסימת ${r.passenger.name}`}>
+                  חסימה
                 </Button>
               </div>
             </Cell>

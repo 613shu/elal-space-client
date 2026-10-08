@@ -74,5 +74,6 @@ export async function request<T>(method: string, path: string, opts: RequestOpti
 export const http = {
   get: <T>(path: string, o?: RequestOptions) => request<T>('GET', path, o),
   post: <T>(path: string, body?: unknown, o?: RequestOptions) => request<T>('POST', path, { ...o, body }),
+  put: <T>(path: string, body?: unknown, o?: RequestOptions) => request<T>('PUT', path, { ...o, body }),
   del: <T = void>(path: string, o?: RequestOptions) => request<T>('DELETE', path, o),
 }

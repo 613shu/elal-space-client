@@ -4,7 +4,8 @@
  * מיועד לפיתוח ולבדיקות של הלקוח כשהשרת האמיתי לא רץ.  הרצה:  node scripts/mock-server.mjs
  *
  * משתמשים: passenger@example.com / Passw0rd!   ו-   admin@example.com / Passw0rd!
- * נתיבי מנהל: GET /api/orders, GET /api/passengers, GET /api/amenities, POST/DELETE /api/flights, DELETE /api/passengers/:id
+ * נתיבי מנהל: GET /api/orders, GET /api/passengers, GET /api/amenities, POST/PUT/DELETE /api/flights, DELETE /api/passengers/:id
+ * נתיבי נוסע: GET /api/passengers/me, GET /api/orders/my. ציבורי: GET /api/flights/available
  * בדיקת תחרות: POST /__mock/take-last-seat/<flightId>  (נוסע אחר "גונב" את המושב האחרון)
  */
 import http from 'node:http'
@@ -116,7 +117,7 @@ const server = http.createServer(async (req, res) => {
   try {
     if (path === '/api/auth/login' && method === 'POST') {
       const b = await body(req)
-      const u = users.find((x) => x.email.toLowerCase() === String(b?.email ?? '').toLowerCase() && x.password === b?.password)
+      const u = users.find((x) => x.email.toLowerCase() === String(b?.email ?? '').toLowerCase() && x.password === b?.password && x.isActive !== false)
       if (!u) return send(res, 401, 'Email or password is incorrect.', 'text/plain; charset=utf-8')
       return send(res, 200, { token: tokenFor(u), profile: profileOf(u) })
     }
@@ -137,6 +138,13 @@ const server = http.createServer(async (req, res) => {
       if (AUTH_REQUIRED_FOR_FLIGHTS && !needAuth()) return
       return send(res, 200, page(flights, url))
     }
+    if (path === '/api/flights/available' && method === 'GET') {
+      const now = Date.now()
+      const open = flights
+        .filter((f) => f.flightStatus === 'Scheduled' && f.availableSeats > 0 && new Date(f.departureTime).getTime() > now)
+        .sort((a, b) => new Date(a.departureTime) - new Date(b.departureTime) || a.id - b.id)
+      return send(res, 200, page(open, url))
+    }
     const fm = path.match(/^\/api\/flights\/(\d+)$/)
     if (fm && method === 'GET') {
       if (AUTH_REQUIRED_FOR_FLIGHTS && !needAuth()) return
@@ -152,6 +160,17 @@ const server = http.createServer(async (req, res) => {
       const f = mk(Math.max(...flights.map((x) => x.id)) + 1, b.flightNumber, b.departureAirport, b.arrivalAirport, b.departureTime, b.arrivalTime, b.numOfSeats, b.numOfSeats, b.price, b.amenityIds ?? [])
       flights.push(f)
       return send(res, 201, f)
+    }
+    if (fm && method === 'PUT') {
+      if (!needAuth(['Admin'])) return
+      const f = flights.find((x) => x.id === Number(fm[1]))
+      if (!f) return err(res, 404, 'Flight not found')
+      const b = await body(req)
+      if (!b?.flightNumber || !b?.arrivalAirport) return send(res, 400, { title: 'One or more validation errors occurred.', status: 400, errors: { FlightNumber: ['Required'] } }, 'application/problem+json')
+      if (new Date(b.arrivalTime) <= new Date(b.departureTime)) return err(res, 400, 'Arrival time must be after departure time')
+      const updated = mk(f.id, b.flightNumber, b.departureAirport, b.arrivalAirport, b.departureTime, b.arrivalTime, f.numOfSeats, f.availableSeats, b.price, b.amenityIds ?? [])
+      Object.assign(f, { ...updated, flightStatus: f.flightStatus })
+      return send(res, 200, f)
     }
     if (fm && method === 'DELETE') {
       if (!needAuth(['Admin'])) return
@@ -170,6 +189,11 @@ const server = http.createServer(async (req, res) => {
     if (path === '/api/passengers' && method === 'GET') {
       if (!needAuth(['Admin'])) return
       return send(res, 200, page(users.filter((u) => u.role === 'Passenger' && u.isActive !== false).map(passengerDto), url))
+    }
+    if (path === '/api/passengers/me' && method === 'GET') {
+      if (!needAuth(['Passenger'])) return
+      const u = users.find((x) => x.id === Number(auth.nameid) && x.isActive !== false)
+      return u ? send(res, 200, { id: u.id, name: u.name, email: u.email, isActive: true, orders: null }) : err(res, 404, 'Passenger not found')
     }
     const pm = path.match(/^\/api\/passengers\/(\d+)$/)
     if (pm && method === 'DELETE') {

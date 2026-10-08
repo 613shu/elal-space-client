@@ -1,10 +1,11 @@
 import { queryOptions } from '@tanstack/react-query'
-import { fetchAdminData, fetchAmenities, fetchFlight, fetchFlights, fetchMyOrders } from './endpoints'
+import { fetchAdminData, fetchAmenities, fetchFlight, fetchFlights, fetchMe, fetchMyOrders } from './endpoints'
 
 export const qk = {
   flights: (authed: boolean) => ['flights', { authed }] as const,
   flight: (id: number, authed: boolean) => ['flight', id, { authed }] as const,
   myOrders: (userId: number | null) => ['orders', 'my', userId] as const,
+  me: (userId: number | null) => ['me', userId] as const,
   admin: () => ['admin', 'overview'] as const,
   amenities: () => ['admin', 'amenities'] as const,
 }
@@ -33,6 +34,14 @@ export const myOrdersQuery = (userId: number | null) =>
     queryFn: ({ signal }) => fetchMyOrders(signal),
     enabled: userId !== null,
     staleTime: 10_000,
+  })
+
+export const meQuery = (userId: number | null) =>
+  queryOptions({
+    queryKey: qk.me(userId),
+    queryFn: ({ signal }) => fetchMe(signal),
+    enabled: userId !== null,
+    staleTime: 60_000,
   })
 
 export const adminQuery = () =>

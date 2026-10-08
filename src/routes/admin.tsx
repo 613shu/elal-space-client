@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { AdminOverview } from '~/components/admin/AdminOverview'
 import { CustomersPanel } from '~/components/admin/CustomersPanel'
-import { ConfirmDialog, CustomerDialog, FlightPassengersDialog, NewFlightDialog } from '~/components/admin/dialogs'
+import { ConfirmDialog, CustomerDialog, EditFlightDialog, FlightPassengersDialog, NewFlightDialog } from '~/components/admin/dialogs'
 import { FlightsPanel } from '~/components/admin/FlightsPanel'
 import { OrdersPanel } from '~/components/admin/OrdersPanel'
 import { RequireAuth } from '~/components/booking/RequireAuth'
@@ -14,11 +14,11 @@ import { Refresh, Rocket, Ticket, Users } from '~/components/ui/Icons'
 import { Skeleton } from '~/components/ui/Skeleton'
 import { EmptyState, ErrorState } from '~/components/ui/StateViews'
 import { toast } from '~/components/ui/Toast'
-import { buildCustomerRows, buildDestinationLoad, buildFlightRows, buildOverview, type FlightRow } from '~/lib/admin/stats'
-import { adminCancelOrder, cancelFlight } from '~/lib/api/endpoints'
+import { buildCustomerRows, buildDestinationLoad, buildFlightRows, buildOverview, type CustomerRow, type FlightRow } from '~/lib/admin/stats'
+import { adminCancelOrder, blockPassenger, cancelFlight } from '~/lib/api/endpoints'
 import { isApiError } from '~/lib/api/errors'
 import { adminQuery } from '~/lib/api/queries'
-import type { AdminOrder } from '~/lib/api/types'
+import type { AdminOrder, Flight } from '~/lib/api/types'
 import { useSession } from '~/lib/auth/store'
 import { destinationFor } from '~/lib/content/generic'
 import { formatDate, formatTime } from '~/lib/format/date'
@@ -63,7 +63,7 @@ const TABS: Array<{ key: TabKey; label: string; Icon: typeof Users }> = [
   { key: 'orders', label: 'הזמנות', Icon: Ticket },
 ]
 
-type Pending = { kind: 'flight'; row: FlightRow } | { kind: 'order'; order: AdminOrder } | null
+type Pending = { kind: 'flight'; row: FlightRow } | { kind: 'order'; order: AdminOrder } | { kind: 'passenger'; row: CustomerRow } | null
 
 function AdminPage({ name }: { name: string }) {
   const search = Route.useSearch()
@@ -76,6 +76,7 @@ function AdminPage({ name }: { name: string }) {
   const [customerId, setCustomerId] = useState<number | null>(null)
   const [pending, setPending] = useState<Pending>(null)
   const [creating, setCreating] = useState(false)
+  const [editing, setEditing] = useState<Flight | null>(null)
 
   const flightRows = useMemo(() => buildFlightRows(q.data?.flights ?? [], q.data?.orders ?? []), [q.data])
   const customerRows = useMemo(() => buildCustomerRows(q.data?.passengers ?? [], q.data?.orders ?? []), [q.data])
@@ -102,14 +103,20 @@ function AdminPage({ name }: { name: string }) {
   }
 
   const act = useMutation({
-    mutationFn: (p: NonNullable<Pending>) => (p.kind === 'flight' ? cancelFlight(p.row.flight.id) : adminCancelOrder(p.order.id)),
+    mutationFn: (p: NonNullable<Pending>) => (p.kind === 'flight' ? cancelFlight(p.row.flight.id) : p.kind === 'passenger' ? blockPassenger(p.row.passenger.id) : adminCancelOrder(p.order.id)),
     onSuccess: (_, p) => {
-      toast(p.kind === 'flight' ? `מסע ${p.row.flight.flightNumber} בוטל, וההזמנות שלו בוטלו.` : 'ההזמנה בוטלה והמושב שוחרר.', 'success')
+      toast(p.kind === 'flight' ? `מסע ${p.row.flight.flightNumber} בוטל, וההזמנות שלו בוטלו.` : p.kind === 'passenger' ? `${p.row.passenger.name} נחסם ולא יוכל להתחבר יותר.` : 'ההזמנה בוטלה והמושב שוחרר.', 'success')
       setPending(null)
+      if (p.kind === 'passenger') setCustomerId(null)
       refreshAll()
     },
     onError: (e, p) => {
       setPending(null)
+      if (p.kind === 'passenger') {
+        toast(isApiError(e) ? (e.kind === 'not-found' ? 'הלקוח כבר לא פעיל במערכת.' : e.message) : 'החסימה נכשלה. נסו שוב.', 'danger')
+        refreshAll()
+        return
+      }
       const what = p.kind === 'flight' ? 'המסע' : 'ההזמנה'
       toast(isApiError(e) ? (e.kind === 'conflict' ? `לא ניתן לבטל: ${what} כבר ${p.kind === 'flight' ? 'בוטל או יצא לדרך' : 'בוטלה או שהמסע יצא לדרך'}.` : e.kind === 'not-found' ? `${what} כבר לא ${p.kind === 'flight' ? 'קיים' : 'קיימת'} במערכת.` : e.message) : 'הביטול נכשל. נסו שוב.', 'danger')
       refreshAll()
@@ -203,8 +210,8 @@ function AdminPage({ name }: { name: string }) {
                 transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
                 className="mt-7"
               >
-                {tab === 'flights' && <FlightsPanel rows={flightRows} onShowPassengers={(r) => showFlight(r.flight.id)} onCancel={(row) => setPending({ kind: 'flight', row })} onCreate={() => setCreating(true)} />}
-                {tab === 'customers' && <CustomersPanel rows={customerRows} onShow={(r) => setCustomerId(r.passenger.id)} />}
+                {tab === 'flights' && <FlightsPanel rows={flightRows} onShowPassengers={(r) => showFlight(r.flight.id)} onCancel={(row) => setPending({ kind: 'flight', row })} onEdit={(row) => setEditing(row.flight)} onCreate={() => setCreating(true)} />}
+                {tab === 'customers' && <CustomersPanel rows={customerRows} onShow={(r) => setCustomerId(r.passenger.id)} onBlock={(row) => setPending({ kind: 'passenger', row })} />}
                 {tab === 'orders' && <OrdersPanel orders={q.data.orders} onCancel={(order) => setPending({ kind: 'order', order })} />}
               </motion.div>
             </AnimatePresence>
@@ -225,18 +232,30 @@ function AdminPage({ name }: { name: string }) {
         }}
       />
 
+      <EditFlightDialog
+        flight={editing}
+        onClose={() => setEditing(null)}
+        onSaved={(f) => {
+          setEditing(null)
+          toast(`מסע ${f.flightNumber} עודכן.`, 'success')
+          refreshAll()
+        }}
+      />
+
       <ConfirmDialog
         open={!!pending}
         pending={act.isPending}
         onClose={() => setPending(null)}
         onConfirm={() => pending && act.mutate(pending)}
-        title={pending?.kind === 'flight' ? 'לבטל את המסע?' : 'לבטל את ההזמנה?'}
+        title={pending?.kind === 'flight' ? 'לבטל את המסע?' : pending?.kind === 'passenger' ? 'לחסום את הלקוח?' : 'לבטל את ההזמנה?'}
         description={
           pending?.kind === 'flight'
             ? 'המסע יסומן כמבוטל, וכל ההזמנות המאושרות שלו יבוטלו. אי אפשר לשחזר את הפעולה.'
-            : 'המושב ישוחרר ויהיה זמין לנוסעים אחרים. אי אפשר לשחזר את ההזמנה אחרי הביטול.'
+            : pending?.kind === 'passenger'
+              ? 'הלקוח יסומן כלא פעיל ולא יוכל להתחבר לאתר. ההזמנות הקיימות שלו נשארות כפי שהן.'
+              : 'המושב ישוחרר ויהיה זמין לנוסעים אחרים. אי אפשר לשחזר את ההזמנה אחרי הביטול.'
         }
-        confirmLabel={pending?.kind === 'flight' ? 'כן, לבטל את המסע' : 'כן, לבטל את ההזמנה'}
+        confirmLabel={pending?.kind === 'flight' ? 'כן, לבטל את המסע' : pending?.kind === 'passenger' ? 'כן, לחסום' : 'כן, לבטל את ההזמנה'}
         summary={
           pending?.kind === 'flight' ? (
             <p>
@@ -244,6 +263,14 @@ function AdminPage({ name }: { name: string }) {
               <br />
               <span className="text-foreground-muted">
                 <span className="num">{pending.row.orders.length}</span> {pending.row.orders.length === 1 ? 'הזמנה תבוטל' : 'הזמנות יבוטלו'}
+              </span>
+            </p>
+          ) : pending?.kind === 'passenger' ? (
+            <p>
+              <span className="font-medium">{pending.row.passenger.name}</span> · <span dir="ltr">{pending.row.passenger.email}</span>
+              <br />
+              <span className="text-foreground-muted">
+                <span className="num">{pending.row.active.length}</span> הזמנות פעילות
               </span>
             </p>
           ) : pending?.kind === 'order' ? (

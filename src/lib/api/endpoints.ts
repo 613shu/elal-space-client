@@ -19,6 +19,7 @@ import type {
   Order,
   Paged,
   RegisterRequest,
+  UserProfile,
 } from './types'
 import { getSession } from '~/lib/auth/store'
 
@@ -62,7 +63,7 @@ function demoFlights(): Flight[] {
 export async function fetchFlights(signal?: AbortSignal): Promise<FlightsResult> {
   if (DATA_MODE === 'demo') return { flights: demoFlights(), source: 'demo' }
   try {
-    const flights = await getAllPages<Flight>('/flights', signal)
+    const flights = await getAllPages<Flight>('/flights/available', signal)
     return { flights, source: 'live' }
   } catch (e) {
     if (DATA_MODE === 'auto' && isApiError(e) && FALLBACK_KINDS.includes(e.kind)) {
@@ -113,6 +114,15 @@ export function demoAuth(email?: string, name?: string): AuthResponse {
       passengerProfile: { ...DEMO_PROFILE.passengerProfile!, name: display, email: email?.trim() || DEMO_PROFILE.email },
     },
   }
+}
+
+/* ------------------------------ פרופיל ------------------------------ */
+
+/** הפרופיל העדכני של הנוסע המחובר, ישירות מהשרת (GET /api/passengers/me) */
+export async function fetchMe(signal?: AbortSignal): Promise<UserProfile> {
+  const s = getSession()
+  if (isDemoSession() && s) return s.profile.passengerProfile ?? { id: s.profile.id, name: s.profile.name, email: s.profile.email }
+  return http.get<UserProfile>('/passengers/me', { signal })
 }
 
 /* ------------------------------ הזמנות ------------------------------ */
@@ -186,7 +196,12 @@ export const fetchAmenities = (signal?: AbortSignal) => getAllPages<Amenity>('/a
 
 export const createFlight = (req: FlightRequest) => http.post<Flight>('/flights', req)
 
+export const updateFlight = (flightId: number, req: FlightRequest) => http.put<Flight>(`/flights/${flightId}`, req)
+
 /** מחיקה רכה בשרת: המסע מסומן כמבוטל, וכל ההזמנות המאושרות שלו מתבטלות */
 export const cancelFlight = (flightId: number) => http.del(`/flights/${flightId}`)
 
 export const adminCancelOrder = (orderId: number) => http.del(`/orders/${orderId}`)
+
+/** מחיקה רכה בשרת: הלקוח מסומן כלא פעיל ולא יוכל להתחבר יותר */
+export const blockPassenger = (passengerId: number) => http.del(`/passengers/${passengerId}`)

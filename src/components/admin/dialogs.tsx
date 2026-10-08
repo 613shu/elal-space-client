@@ -7,14 +7,14 @@ import { Button } from '~/components/ui/Button'
 import { Dialog } from '~/components/ui/Dialog'
 import { SelectField, TextField } from '~/components/ui/Field'
 import { isConfirmed, PHASE_LABEL, type CustomerRow, type FlightRow } from '~/lib/admin/stats'
-import { createFlight } from '~/lib/api/endpoints'
+import { createFlight, updateFlight } from '~/lib/api/endpoints'
 import { isApiError } from '~/lib/api/errors'
 import { amenitiesQuery } from '~/lib/api/queries'
 import type { AdminOrder, Flight, FlightRequest } from '~/lib/api/types'
 import { OPEN_DESTINATIONS } from '~/lib/content/destinations'
 import { destinationFor } from '~/lib/content/generic'
 import { hasDeparted } from '~/lib/flights'
-import { formatDate, formatDateTime, formatTime } from '~/lib/format/date'
+import { formatDate, formatDateTime, formatTime, parseServerDate } from '~/lib/format/date'
 import { formatPrice } from '~/lib/format/money'
 import { Avatar, OccupancyMeter } from './parts'
 
@@ -193,20 +193,48 @@ const EMPTY: Record<Key, string> = { flightNumber: '', departureAirport: 'תל �
 export function NewFlightDialog({ open, onClose, onCreated }: { open: boolean; onClose: () => void; onCreated: (f: Flight) => void }) {
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()} title="מסע חדש" description="המסע ייפתח להזמנות מיד עם השמירה." className="w-[min(94vw,46rem)]">
-      {open && <NewFlightForm onClose={onClose} onCreated={onCreated} />}
+      {open && <FlightForm onClose={onClose} onSaved={onCreated} />}
     </Dialog>
   )
 }
 
-function NewFlightForm({ onClose, onCreated }: { onClose: () => void; onCreated: (f: Flight) => void }) {
-  const [v, setV] = useState(EMPTY)
-  const [picked, setPicked] = useState<number[]>([])
+export function EditFlightDialog({ flight, onClose, onSaved }: { flight: Flight | null; onClose: () => void; onSaved: (f: Flight) => void }) {
+  return (
+    <Dialog open={!!flight} onOpenChange={(o) => !o && onClose()} title={flight ? `עריכת מסע ${flight.flightNumber}` : 'עריכת מסע'} description="ההזמנות הקיימות נשארות בתוקף. מספר המושבים נקבע ביצירת המסע ולא משתנה." className="w-[min(94vw,46rem)]">
+      {flight && <FlightForm key={flight.id} flight={flight} onClose={onClose} onSaved={onSaved} />}
+    </Dialog>
+  )
+}
+
+/** ממיר תאריך מהשרת (UTC) לערך של datetime-local לפי השעון במחשב */
+function toLocalInput(iso: string) {
+  const d = parseServerDate(iso)
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+function valuesOf(f: Flight): Record<Key, string> {
+  return {
+    flightNumber: f.flightNumber,
+    departureAirport: f.departureAirport,
+    arrivalAirport: f.arrivalAirport,
+    departure: toLocalInput(f.departureTime),
+    arrival: toLocalInput(f.arrivalTime),
+    numOfSeats: String(f.numOfSeats),
+    price: String(f.price),
+  }
+}
+
+function FlightForm({ flight, onClose, onSaved }: { flight?: Flight; onClose: () => void; onSaved: (f: Flight) => void }) {
+  const editing = !!flight
+  const [v, setV] = useState(flight ? valuesOf(flight) : EMPTY)
+  const [picked, setPicked] = useState<number[]>(flight ? flight.amenities.map((a) => a.id).filter((id): id is number => typeof id === 'number') : [])
   const [errors, setErrors] = useState<Partial<Record<Key, string>>>({})
   const amenities = useQuery(amenitiesQuery())
 
   const save = useMutation({
-    mutationFn: (req: FlightRequest) => createFlight(req),
-    onSuccess: onCreated,
+    mutationFn: (req: FlightRequest) => (flight ? updateFlight(flight.id, req) : createFlight(req)),
+    onSuccess: onSaved,
   })
 
   const set = (k: Key, value: string) => {
@@ -248,7 +276,7 @@ function NewFlightForm({ onClose, onCreated }: { onClose: () => void; onCreated:
   const failure = save.isError ? (isApiError(save.error) ? (save.error.kind === 'validation' ? 'השרת דחה את הפרטים. בדקו את השדות ונסו שוב.' : save.error.message) : 'השמירה נכשלה. נסו שוב.') : null
 
   return (
-    <form onSubmit={submit} noValidate className="flex flex-col gap-5" aria-label="טופס מסע חדש">
+    <form onSubmit={submit} noValidate className="flex flex-col gap-5" aria-label={editing ? 'טופס עריכת מסע' : 'טופס מסע חדש'}>
       {failure && (
         <div role="alert" className="rounded-card border border-destructive/50 bg-destructive-soft p-4 text-destructive">
           {failure}
@@ -258,13 +286,14 @@ function NewFlightForm({ onClose, onCreated }: { onClose: () => void; onCreated:
         <TextField label="מספר טיסה" data-nf="flightNumber" ltr placeholder="ES 120" value={v.flightNumber} onChange={(e) => set('flightNumber', e.target.value)} error={errors.flightNumber} />
         <TextField label="נקודת יציאה" data-nf="departureAirport" value={v.departureAirport} onChange={(e) => set('departureAirport', e.target.value)} error={errors.departureAirport} />
         <SelectField label="יעד" data-nf="arrivalAirport" value={v.arrivalAirport} onChange={(e) => set('arrivalAirport', e.target.value)} error={errors.arrivalAirport}>
+          {flight && !OPEN_DESTINATIONS.some((d) => d.name === flight.arrivalAirport) && <option value={flight.arrivalAirport}>{flight.arrivalAirport}</option>}
           {OPEN_DESTINATIONS.map((d) => (
             <option key={d.slug} value={d.name}>
               {d.name}
             </option>
           ))}
         </SelectField>
-        <TextField label="מספר מושבים" data-nf="numOfSeats" ltr inputMode="numeric" value={v.numOfSeats} onChange={(e) => set('numOfSeats', e.target.value.replace(/\D/g, ''))} error={errors.numOfSeats} />
+        <TextField label="מספר מושבים" data-nf="numOfSeats" ltr inputMode="numeric" value={v.numOfSeats} onChange={(e) => set('numOfSeats', e.target.value.replace(/\D/g, ''))} error={errors.numOfSeats} disabled={editing} hint={editing ? 'לא ניתן לשנות אחרי היצירה' : undefined} />
         <TextField label="מועד יציאה" data-nf="departure" type="datetime-local" ltr value={v.departure} onChange={(e) => set('departure', e.target.value)} error={errors.departure} hint="לפי השעון במחשב שלכם" />
         <TextField label="מועד הגעה" data-nf="arrival" type="datetime-local" ltr value={v.arrival} min={v.departure || undefined} onChange={(e) => set('arrival', e.target.value)} error={errors.arrival} />
         <TextField label="מחיר לנוסע (₪)" data-nf="price" ltr inputMode="numeric" placeholder="184000" value={v.price} onChange={(e) => set('price', e.target.value.replace(/[^\d.]/g, ''))} error={errors.price} className="sm:col-span-2" />
@@ -293,7 +322,7 @@ function NewFlightForm({ onClose, onCreated }: { onClose: () => void; onCreated:
           ביטול
         </Button>
         <Button type="submit" loading={save.isPending}>
-          שמירת המסע
+          {editing ? 'שמירת השינויים' : 'שמירת המסע'}
         </Button>
       </div>
     </form>
