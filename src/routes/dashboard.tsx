@@ -124,6 +124,9 @@ function Dashboard() {
         <Reveal className="mt-12 flex flex-col gap-6">
           <NextTrip order={next} passenger={name} />
           <LaunchClock flight={next.flight} />
+          <div className="flex justify-end">
+            <Button variant="danger" size="sm" onClick={() => setToCancel(next)}>ביטול ההזמנה הקרובה</Button>
+          </div>
         </Reveal>
       )}
 
@@ -136,12 +139,6 @@ function Dashboard() {
             ))}
           </ul>
         </section>
-      )}
-
-      {next && (
-        <div className="mt-6 flex justify-end">
-          <Button variant="danger" size="sm" onClick={() => setToCancel(next)}>ביטול ההזמנה הקרובה</Button>
-        </div>
       )}
 
       <Dialog open={!!toCancel} onOpenChange={(o) => !o && !cancel.isPending && setToCancel(null)} title="לבטל את ההזמנה?" description="המושב ישוחרר ויהיה זמין לנוסעים אחרים. לא ניתן לשחזר את ההזמנה אחרי הביטול.">
